@@ -27,7 +27,13 @@ def check_if_file_exits(file_name):
     return os.path.exists(file_name)
 
 
-def readucr(filename, delimiter=','):
+def readucr(conn, dbName, tableName):
+    data = pd.read_sql(
+        text(
+            "select * from " + dbName + "." + tableName
+        ),
+        conn,
+    )
     data = np.loadtxt(filename, delimiter=delimiter)
     Y = data[:, 0]
     X = data[:, 1:]
@@ -56,9 +62,21 @@ def create_directory(directory_path):
 def read_dataset(root_dir, archive_name, dataset_name):
     datasets_dict = {}
 
-    file_name = root_dir + '/archives/' + archive_name + '/' + dataset_name + '/' + dataset_name
-    x_train, y_train = readucr(file_name + '_TRAIN')
-    x_test, y_test = readucr(file_name + '_TEST')
+    engine = create_engine("taos://root:taosdata@localhost:6030/" + db)
+    try:
+        conn = engine.connect()
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    if conn is not None:
+        print("Connected to the TDengine ...")
+    else:
+        print("Failed to connect to taos")
+        exit(1)
+
+    x_train, y_train = readucr(conn, db + '_TRAIN.tsv')
+    x_test, y_test = readucr(conn, db + '_TEST.tsv')
     datasets_dict[dataset_name] = (x_train.copy(), y_train.copy(), x_test.copy(),
                                    y_test.copy())
 
